@@ -1,5 +1,7 @@
 #N canvas 415 198 450 300 12;
 #X obj 130 150 nicinfo;
-#X obj 164 100 bng 15 250 50 0 empty empty empty 17 7 0 10 -262144
+#X obj 130 114 bng 15 250 50 0 empty empty empty 17 7 0 10 -262144
 -1 -1;
+#X text 45 30 prints to the console the current ip(s) of the network
+interface(s) found in the system.;
 #X connect 1 0 0 0;
