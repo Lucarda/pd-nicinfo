@@ -35,6 +35,8 @@ define forDarwin
   datafiles +=
 endef
 
+# On Linux/Debian install:
+#   sudo apt-get install libssl-dev
 
 # include Makefile.pdlibbuilder
 # (for real-world projects see the "Project Management" section
