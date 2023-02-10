@@ -3,7 +3,7 @@ lib.name = nicinfo
 
 
 cflags += 
-ldlibs += -lpthread
+ldlibs += -lpthread -lssl -lcrypto
 
 
 class.sources = \
@@ -37,3 +37,6 @@ include $(PDLIBBUILDER_DIR)/Makefile.pdlibbuilder
 
 localdep_windows: install
 	cd "${installpath}"; ./windep.sh nicinfo.dll
+    
+#        libcrypto-1_1-x64.dll => /mingw64/bin/libcrypto-1_1-x64.dll (0x7ff877c10000)
+#        libssl-1_1-x64.dll => /mingw64/bin/libssl-1_1-x64.dll (0x7ff8b0f70000)
