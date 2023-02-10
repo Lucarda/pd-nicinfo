@@ -1,6 +1,8 @@
 Changelog for pd-nicinfo
 
-
+v0.1.0, dated 10-02-2023
+Better code, better thread and https connection to get
+outside IPv4.
 
 v0.0.0, dated 04-05-2021
 Initial version.
