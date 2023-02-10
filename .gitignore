@@ -1,3 +1,4 @@
+/out
 *.o
 *.pd_*
 # Mac OS X
@@ -9,3 +10,4 @@
 # Windows
 *.dll
 *.m_*
+
