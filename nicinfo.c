@@ -16,12 +16,8 @@
 #include <ifaddrs.h>
 #endif
 
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/bio.h>
 
 #define HOST "api.ipify.org"
-#define PORT "443"
 
 #include "m_pd.h"
 
@@ -145,146 +141,75 @@ static void nicinfo_clock_tick(t_nicinfo *x)
 
 static void nicnfo_ipify(t_nicinfo *x) 
 {
-    //
-    //  Initialize the variables
-    //
-    BIO* bio;
-    SSL* ssl;
-    SSL_CTX* ctx;
-
-    //
-    //   Registers the SSL/TLS ciphers and digests.
-    //
-    //   Basically start the security layer.
-    //
-    SSL_library_init();
-
-    //
-    //  Creates a new SSL_CTX object as a framework to establish TLS/SSL
-    //  or DTLS enabled connections
-    //
-    ctx = SSL_CTX_new(SSLv23_client_method());
-
-    //
-    //  -> Error check
-    //
-    if (ctx == NULL)
-    {
-        //printf("Ctx is null\n");
-    }
-
-    //
-    //   Creates a new BIO chain consisting of an SSL BIO
-    //
-    bio = BIO_new_ssl_connect(ctx);
-
-    //
-    //  Use the variable from the beginning of the file to create a 
-    //  string that contains the URL to the site that you want to connect
-    //  to while also specifying the port.
-    //
-    BIO_set_conn_hostname(bio, HOST ":" PORT);
-
-    //
-    //   Attempts to connect the supplied BIO
-    //
-    if(BIO_do_connect(bio) <= 0)
-    {
-        printf("Failed connection\n");
-        exit(1);
-    }
-    else
-    {
-        //printf("Connected\n");
-    }
-
-    //
-    //  The bare minimum to make a HTTP request.
-    //
+    
     char* write_buf = "GET / HTTP/1.1\r\n"
                       "Host: " HOST "\r\n"
                       "Connection: close\r\n"
                       "\r\n";
+    char buf[1024]; 
+    struct hostent *server;
+    struct sockaddr_in serv_addr;
+    int sockfd, total, recvsize;	
 
-    //
-    //   Attempts to write len bytes from buf to BIO
-    //
-    if(BIO_write(bio, write_buf, strlen(write_buf)) <= 0)
+	/* create the socket */
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd < 0) 
     {
-        //
-        //  Handle failed writes here
-        //
-        if(!BIO_should_retry(bio))
-        {
-            // Not worth implementing, but worth knowing.
-        }
-
-        //
-        //  -> Let us know about the failed writes
-        //
-        printf("Failed write\n");
+		printf("ERROR opening socket\n");
+		return;
     }
 
-    //
-    //  Variables used to read the response from the server
-    //
-    int size;
-    char buf[1024];
-
-    //
-    //  Read the response message
-    //
-    for(;;)
-    {
-        //
-        //  Get chunks of the response 1023 at the time.
-        //
-        size = BIO_read(bio, buf, 1023);
-
-        //
-        //  If no more data, then exit the loop
-        //
-        if(size <= 0)
-        {
-            break;
-        }
-
-        //
-        //  Terminate the string with a 0, to let know C when the string 
-        //  ends.
-        //
-        buf[size] = '\0';
-
-        //
-        //  ->  Print out the response
-        //
-        //printf("%s", buf);
-        
-        //
-        //  Do some stuff here to get only the IPv4 we asked to https://www.ipify.org/. 
-        //
-        
-        char buf2[20] = {'\0'};
-        int i, lastlf;
-        for(i=0;i<200;i++)
-        {
-            if(buf[i] == 0x0a)
-            lastlf = i;
-        }
-        strncpy(buf2, buf+(lastlf+1), 20);
-        //printf("%s", buf2);
-        SETSYMBOL(x->x_outsideip+0, gensym("Outside"));
-        SETSYMBOL(x->x_outsideip+1, gensym("IPv4"));
-        SETSYMBOL(x->x_outsideip+2, gensym(buf2));
-        
+	/* lookup the ip address */
+	server = gethostbyname(HOST);
+	if (server == NULL)
+    { 
+		printf("ERROR, no such host (do we have internet?)\n");
+		return;
     }
 
+	/* fill in the structure */
+	memset(&serv_addr,0,sizeof(serv_addr));
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port = htons(80);
+	memcpy(&serv_addr.sin_addr.s_addr,server->h_addr,server->h_length);
+
+	/* connect the socket */
+	if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) 
+    {
+		printf("ERROR connecting\n");
+        return;
+    }
+
+	total = strlen(write_buf);
+    send(sockfd,write_buf,total, 0);
+    /* receive the response */
+    memset(buf,0,sizeof(buf));
+    total = sizeof(buf)-1;
+    recvsize = recv(sockfd,buf,sizeof(buf), 0);   
+    buf[recvsize] = '\0';
+	/* close the socket */
+	#ifdef _WIN32
+    closesocket(sockfd);
+	#else
+	close(sockfd);
+	#endif
+
     //
-    //  Clean after ourselves
+    //  Do some stuff here to get only the IPv4 we asked to http://www.ipify.org/. 
     //
-    BIO_free_all(bio);
-    SSL_CTX_free(ctx);
-    
+        
+    char buf2[20] = {'\0'};
+    int i, lastlf;
+    for(i=0;i<200;i++)
+    {
+        if(buf[i] == 0x0a)
+        lastlf = i;
+    }
+    strncpy(buf2, buf+(lastlf+1), 20);
+    SETSYMBOL(x->x_outsideip+0, gensym("Outside"));
+    SETSYMBOL(x->x_outsideip+1, gensym("IPv4"));
+    SETSYMBOL(x->x_outsideip+2, gensym(buf2));
+
     //
     // From Pd thread
     //
@@ -296,11 +221,8 @@ static void nicnfo_ipify(t_nicinfo *x)
         clock_delay(x->x_clock, 0);
         sys_unlock();
     }
-    pthread_mutex_unlock(&x->x_mutex);
-    
+    pthread_mutex_unlock(&x->x_mutex);    
     return;   
-
-
 }
 
 static void nicinfo_thread(t_nicinfo *x)

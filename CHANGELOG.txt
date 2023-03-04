@@ -1,5 +1,8 @@
 Changelog for pd-nicinfo
 
+v0.2.0, dated 04-03-2023
+Now outside IPv4 is get via an http connection.
+
 v0.1.0, dated 10-02-2023
 Better code, better thread and https connection to get
 outside IPv4.
