@@ -16,21 +16,16 @@ datafiles = \
 
 
 define forWindows
-  cflags += 
   ldlibs +=  -lws2_32 -liphlpapi
-  datafiles += 
 endef
 
 
 PDLIBBUILDER_DIR=./pd-lib-builder
 include $(PDLIBBUILDER_DIR)/Makefile.pdlibbuilder
 
-    
-#localdep_linux: install
-#	scripts/localdeps.linux.sh "${installpath}/nicinfo.${extension}"
 
+# On Msys2 install these packages:
+#   pacman -S mingw32/mingw-w64-i686-ntldd-git 
+#   pacman -S mingw64/mingw-w64-x86_64-ntldd-git
 localdep_windows: install
 	scripts/localdeps.win.sh "${installpath}/nicinfo.${extension}"
-
-localdep_macos: install
-	scripts/localdeps.macos.sh "${installpath}/nicinfo.${extension}"
