@@ -14,6 +14,7 @@
 #include <netinet/in.h> 
 #include <netdb.h> 
 #include <ifaddrs.h>
+#include <sys/time.h>
 #endif
 
 
@@ -143,7 +144,7 @@ static void nicnfo_ipify(t_nicinfo *x)
 {
     
     char* write_buf = "GET / HTTP/1.1\r\n"
-                      "Host: " HOST "\r\n"
+                      "Host: api.ipify.org\r\n"
                       "Connection: close\r\n"
                       "\r\n";
     char buf[1024]; 
@@ -158,6 +159,18 @@ static void nicnfo_ipify(t_nicinfo *x)
 		printf("ERROR opening socket\n");
 		return;
     }
+    
+    #ifdef _WIN32
+        DWORD timeout = 5 * 1000;
+        setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof timeout);
+        setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof timeout);
+	#else
+        struct timeval tv;
+        tv.tv_sec = 5;
+        tv.tv_usec = 0;
+        setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+        setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv);
+	#endif
 
 	/* lookup the ip address */
 	server = gethostbyname(HOST);
@@ -179,7 +192,7 @@ static void nicnfo_ipify(t_nicinfo *x)
 		printf("ERROR connecting\n");
         return;
     }
-
+    recvsize = 0;
 	total = strlen(write_buf);
     send(sockfd,write_buf,total, 0);
     /* receive the response */
@@ -189,40 +202,43 @@ static void nicnfo_ipify(t_nicinfo *x)
     buf[recvsize] = '\0';
 	/* close the socket */
 	#ifdef _WIN32
-    closesocket(sockfd);
+        closesocket(sockfd);
 	#else
-	close(sockfd);
+        close(sockfd);
 	#endif
 
     //
     //  Do some stuff here to get only the IPv4 we asked to http://www.ipify.org/. 
     //
-        
-    char buf2[20] = {'\0'};
-    int i, lastlf;
-    for(i=0;i<200;i++)
-    {
-        if(buf[i] == 0x0a)
-        lastlf = i;
-    }
-    strncpy(buf2, buf+(lastlf+1), 20);
-    SETSYMBOL(x->x_outsideip+0, gensym("Outside"));
-    SETSYMBOL(x->x_outsideip+1, gensym("IPv4"));
-    SETSYMBOL(x->x_outsideip+2, gensym(buf2));
+    if(recvsize)
+    {        
+        char buf2[20] = {'\0'};
+        int i, lastlf;
+        for(i=0;i<200;i++)
+        {
+            if(buf[i] == 0x0a)
+            lastlf = i;
+        }
+        strncpy(buf2, buf+(lastlf+1), 20);
+        SETSYMBOL(x->x_outsideip+0, gensym("Outside"));
+        SETSYMBOL(x->x_outsideip+1, gensym("IPv4"));
+        SETSYMBOL(x->x_outsideip+2, gensym(buf2));
 
-    //
-    // From Pd thread
-    //
+        //
+        // From Pd thread
+        //
 
-    pthread_mutex_lock(&x->x_mutex);
-    if (x->x_requestcode != QUIT)
-    {
-        sys_lock();
-        clock_delay(x->x_clock, 0);
-        sys_unlock();
+        pthread_mutex_lock(&x->x_mutex);
+        if (x->x_requestcode != QUIT)
+        {
+            sys_lock();
+            clock_delay(x->x_clock, 0);
+            sys_unlock();
+        }
+        pthread_mutex_unlock(&x->x_mutex);    
+        return;
     }
-    pthread_mutex_unlock(&x->x_mutex);    
-    return;   
+    else return;
 }
 
 static void nicinfo_thread(t_nicinfo *x)
