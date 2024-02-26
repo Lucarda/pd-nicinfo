@@ -1,5 +1,8 @@
 Changelog for pd-nicinfo
 
+v0.2.3, dated 26-02-2024
+Bug fix when receiving http response.
+
 v0.2.2, dated 16-02-2024
 Scan bigger buffer in http response.
 

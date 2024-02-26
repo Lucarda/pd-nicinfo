@@ -214,12 +214,12 @@ static void nicnfo_ipify(t_nicinfo *x)
     {
         char buf2[20] = {'\0'};
         int i, lastlf;
-        for(i=0;i<2000;i++)
+        for(i=0;i<recvsize;i++)
         {
             if(buf[i] == 0x0a)
             lastlf = i;
         }
-        strncpy(buf2, buf+(lastlf+1), 20);
+        strncpy(buf2, buf+(lastlf+1), (recvsize - lastlf));
         SETSYMBOL(x->x_outsideip+0, gensym("Outside"));
         SETSYMBOL(x->x_outsideip+1, gensym("IPv4"));
         SETSYMBOL(x->x_outsideip+2, gensym(buf2));
